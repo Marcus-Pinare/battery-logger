@@ -2,11 +2,10 @@
   "name": "Development Environment",
   "image": "mcr.microsoft.com/devcontainers/python:3.11-bullseye",
   "forwardPorts": [8501],
-  "mounts": ["source=${localWorkspaceFolder},target=/workspace,type=bind",
-            "source=${localEnv:HOME}${localEnv:USERPROFILE}/.gnupg,target=/home/vscode/.gnupg,type=bind"],
-  "workspaceFolder": "/workspace",
+  "mounts": ["source=${localWorkspaceFolder},target=/home/vscode/workspace,type=bind"],
+  "workspaceFolder": "/home/vscode/workspace",
   "remoteUser": "vscode",
-  "postCreateCommand": "pip install --user -r requirements.txt && python -m pip install --user pre-commit &&  pre-commit install",
+  "postCreateCommand": "python -m pip install --user -r requirements.txt && python -m pip install --user pre-commit && pre-commit install",
   "customizations": {
     "vscode": {
       "extensions": [
