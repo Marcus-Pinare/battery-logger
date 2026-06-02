@@ -15,11 +15,11 @@ A simple Streamlit app template for you to modify!
 2. Run the app
 
    ```
-   $ streamlit run streamlit_app.py
+   $ streamlit run front-end/streamlit_app.py
    ```
 
    Or
 
    ```
-   streamlit run streamlit_app.py --server.enableCORS false --server.enableXsrfProtection false
+   streamlit run front-end/streamlit_app.py --server.enableCORS false --server.enableXsrfProtection false
    ```
