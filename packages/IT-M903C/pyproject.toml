@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=42"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "IT_M903C"
+version = "0.1.0"
+description = "Process IT_M903C log file"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+    {name = "Marcus Pinaré", email = "marcus.pinare@cavok-uas.com"}
+]
+
+dependencies = [
+    "shutil",
+    "pandas",
+    "pathlib"
+]
+
+[project.scripts]
+preprocess-battery-log = "IT_M903C.scripts.preprocess_battery_log:main"
