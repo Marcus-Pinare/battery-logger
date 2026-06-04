@@ -1,4 +1,4 @@
-from IT_M903C.battery_test.battery_test_log import BatteryTestLog
+from ..battery_test.battery_test_log import BatteryTestLog
 
 
 def preprocess_battery_log(path: str):
