@@ -2,3 +2,6 @@
 __pycache__/
 .DS_Store
 secrets.toml
+.idea
+.vscode
+*.egg-info
