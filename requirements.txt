@@ -2,3 +2,5 @@ streamlit>=1.28
 fastapi
 pandas
 pydantic
+matplotlib
+pathlib
