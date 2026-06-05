@@ -14,7 +14,8 @@ authors = [
 
 dependencies = [
     "pandas",
-    "pathlib"
+    "pathlib",
+    "matplotlib"
 ]
 
 [project.scripts]
