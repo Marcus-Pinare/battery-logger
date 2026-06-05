@@ -9,6 +9,19 @@ from pandas.errors import EmptyDataError
 
 
 class BatteryTestLog:
+    """Battery test log processor.
+
+    Handles reading, validation, and processing of battery discharge test log files.
+    Provides methods to extract discharge data and generate discharge curves.
+
+    Attributes:
+        log_path (Path): Resolved path to the log file.
+        cell_number (int): Number of cells in the battery.
+        battery_capacity (float): Battery capacity in ampere-hours (Ah).
+        battery_voltage (float): Battery nominal voltage in volts (V).
+        battery_manufacturer (str): Battery manufacturer name.
+    """
+
     log_path: Path
     cell_number: int
     battery_capacity: float  # A.h
@@ -21,53 +34,72 @@ class BatteryTestLog:
         battery_capacity: float,
         battery_voltage: float,
         cell_number: int,
-        battery_manufacturer="Battery",
-    ):
+        battery_manufacturer: str = "Battery",
+    ) -> None:
+        """Initialize BatteryTestLog.
+
+        Args:
+            log_path: Path to the battery test log file.
+            battery_capacity: Battery capacity in ampere-hours. Must be > 0.
+            battery_voltage: Battery nominal voltage in volts. Must be > 0.
+            cell_number: Number of cells in the battery. Must be > 0.
+            battery_manufacturer: Battery manufacturer name. Defaults to "Battery".
+
+        Raises:
+            ValueError: If log_path does not exist or is not a file.
+            ValueError: If any numeric parameter is <= 0.
+            ValueError: If the log file is invalid (via check_log_validity).
+        """
         self.log_path = Path(log_path).resolve()
 
         if not self.log_path.exists() or not self.log_path.is_file():
             raise ValueError("File not found")
 
-        # # Check the csv
         self.check_log_validity(str(self.log_path))
 
         self.battery_manufacturer = battery_manufacturer
 
-        # Capacity
         if battery_capacity <= 0:
             raise ValueError("Battery capacity must be greater than 0")
         self.battery_capacity = battery_capacity
 
-        # Voltage
         if battery_voltage <= 0:
             raise ValueError("Battery voltage must be greater than 0")
         self.battery_voltage = battery_voltage
 
-        # Cell number
         if cell_number <= 0:
             raise ValueError("Cell number must be greater than 0")
         self.cell_number = cell_number
 
-    def preprocess_log(self):
-        """
-        Preprocess a csv log by removing the IT-M903C header.
-        :return:
+    def preprocess_log(self) -> None:
+        """Preprocess the log file by removing the IT-M903C header line.
+
+        Modifies the log file in place by removing the first line.
         """
         self.pop_first_file_line(str(self.log_path))
 
-    def get_discharge_data(self):
-        """
-        Retrieve timestamp, voltage and capacity from battery log.
-        :return: tuple(time, voltage, capacity)
+    def get_discharge_data(self) -> tuple:
+        """Retrieve discharge data from the battery log.
+
+        Extracts timestamp, voltage, and capacity data from the log file.
+        Converts comma decimal separators to dots and handles numeric conversion.
+
+        Returns:
+            tuple: A tuple containing:
+                - timestamp (pd.Series): Time of each observation.
+                - voltage (pd.Series): Voltage at each observation time.
+                - capacity (pd.Series): Remaining capacity at each observation time.
+
+        Raises:
+            pd.errors.EmptyDataError: If the log file is empty or has no valid data.
+            pd.errors.ParserError: If the log file cannot be parsed as CSV.
         """
         df = pd.read_csv(str(self.log_path), skiprows=1, sep=";", usecols=[0, 2, 3])
 
         timestamp = pd.to_datetime(df["TestTime"], format="%H:%M:%S").dt.time
 
-        # Voltage and swap , for .
         voltage = pd.to_numeric(df["Voltage"].str.replace(",", "."), errors="coerce")
 
-        # Capacity and swap , for .
         capacity = pd.to_numeric(
             df["Capability"].str.replace(",", "."), errors="coerce"
         )
@@ -75,8 +107,19 @@ class BatteryTestLog:
 
         return timestamp, voltage, capacity
 
-    def generate_discharge_curve(self, capacity, voltage, out_path: str):
-        # Output path checking
+    def generate_discharge_curve(
+        self, capacity: pd.Series, voltage: pd.Series, out_path: str
+    ) -> None:
+        """Generate and save a discharge curve plot (Voltage vs Capacity).
+
+        Args:
+            capacity: Capacity data (x-axis).
+            voltage: Voltage data (y-axis).
+            out_path: Directory path where the plot image will be saved.
+
+        Raises:
+            ValueError: If out_path is not a valid directory.
+        """
         path = Path(out_path).resolve()
         if not path.exists() or not path.is_dir():
             raise ValueError("Invalid output path")
@@ -94,39 +137,56 @@ class BatteryTestLog:
         plt.grid(True)
         plt.plot(capacity, voltage)
 
-        savefig(out_path + name + ".png")
+        savefig(str(path / f"{name}.png"))
+        plt.close()
 
     @staticmethod
-    def pop_first_file_line(file_path: str):
-        """
-        Delete first line from a file.
-        :return: The deleted line
+    def pop_first_file_line(file_path: str) -> str:
+        """Delete the first line from a file.
+
+        Args:
+            file_path: Path to the file to modify.
+
+        Returns:
+            str: The deleted line.
+
+        Raises:
+            FileNotFoundError: If file_path does not exist.
+            IOError: If file operations fail.
         """
         with open(file_path, "r") as f:
-            first_line = f.readline()  # Read first line
+            first_line = f.readline()
 
-        # Create temp file
         temp_path = f"{file_path}.tmp"
         with open(file_path, "r") as f_in, open(temp_path, "w") as f_out:
-            next(f_in)  # Skip first line
+            next(f_in)
             shutil.copyfileobj(f_in, f_out)
 
         os.replace(temp_path, file_path)
         return first_line
 
     @staticmethod
-    def check_log_validity(file_path: str):
-        # Check the file validity
+    def check_log_validity(file_path: str) -> None:
+        """Validate the battery test log file.
+
+        Checks the file header and required columns.
+
+        Args:
+            file_path: Path to the log file to validate.
+
+        Raises:
+            ValueError: If the file header is invalid.
+            EmptyDataError: If the CSV file is empty.
+            ValueError: If any required column is missing.
+        """
         with open(file_path, "r") as f:
             if f.readline() != "1@True@1\n":
                 raise ValueError("File not valid")
 
-        # Check the csv
         df = pd.read_csv(file_path, skiprows=1, nrows=2, sep=";")
         if df.empty:
             raise EmptyDataError("Empty csv file")
 
-        # Validate required columns
         required_columns = [
             "Voltage",
             "CurrentA",
@@ -138,17 +198,3 @@ class BatteryTestLog:
         for col in required_columns:
             if col not in df.columns:
                 raise ValueError(f"Column {col} not in csv file")
-
-
-tmp = BatteryTestLog(
-    "/home/vscode/workspace/packages/IT-M903C/IT_M903C/battery_test/tmp.csv",
-    33,
-    44.4,
-    12,
-    "RACEPOW",
-)
-# tmp.preprocess_log()
-print(tmp.log_path)
-print(tmp.get_discharge_data())
-time, voltage, capability = tmp.get_discharge_data()
-print(tmp.generate_discharge_curve(capability, voltage, ""))
